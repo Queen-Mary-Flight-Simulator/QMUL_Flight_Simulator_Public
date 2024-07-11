@@ -1,0 +1,13 @@
+set altitude 3000 ft
+set TAS 200 kts
+set flaps 20.0
+set gear 0.0
+
+plot pitch degs 0 20
+plot pitch_rate deg/s -8 8
+plot alpha degs -4 12
+plot elevator degs -20 20
+
+time 10 secs
+input elevator pulse 1 2 -10
+autotrim

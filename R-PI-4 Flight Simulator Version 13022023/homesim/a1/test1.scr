@@ -1,0 +1,12 @@
+event:
+    altitude > 410 ft
+action:
+    fail engine1
+    Log     TIME          SPD     ALT        HDG
+    timestamp elapsedtime
+record:
+    airspeed kts
+    altitude ft
+    yaw degs
+end:
+    time > 5 secs

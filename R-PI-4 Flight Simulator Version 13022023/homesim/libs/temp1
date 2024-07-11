@@ -1,0 +1,14 @@
+-rw-r--r-- 1 pi pi 70831 Mar 31 09:11 soundlib.c
+-rw-r--r-- 1 pi pi 15886 Mar 25 17:47 weather.c
+-rw-r--r-- 1 pi pi  4582 Dec 25  2021 clocks.c
+-rw-r--r-- 1 pi pi  7680 Dec 25  2021 dted.c
+-rw-r--r-- 1 pi pi  4086 Dec 25  2021 fileio.c
+-rw-r--r-- 1 pi pi 43476 Dec 25  2021 glib.c
+-rw-r--r-- 1 pi pi  8013 Dec 25  2021 inslib.c
+-rw-r--r-- 1 pi pi  3106 Dec 25  2021 maths.c
+-rw-r--r-- 1 pi pi 29166 Dec 25  2021 navlib.c
+-rw-r--r-- 1 pi pi  3317 Dec 25  2021 pnglib.c
+-rw-r--r-- 1 pi pi  5610 Dec 25  2021 shader.c
+-rw-r--r-- 1 pi pi  3680 Dec 25  2021 splinelib.c
+-rw-r--r-- 1 pi pi  6473 Dec 25  2021 target.c
+-rw-r--r-- 1 pi pi  6653 Dec 25  2021 udplib.c

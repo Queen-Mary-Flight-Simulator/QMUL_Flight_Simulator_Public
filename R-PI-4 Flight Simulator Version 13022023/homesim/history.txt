@@ -1,0 +1,52 @@
+    1  ls
+    2  cd dja
+    3  ls
+    4  cd homesim
+    5  ls
+    6  cd b747
+    7  ls
+    8  cd demo
+    9  make -f Makefile.demo
+   10  ./demo
+   11  ./b747
+   12  sudo ./b747
+   13  ./b747
+   14  cd b747
+   15  ./b747
+   16  sudo apt install scrot
+   17  scrot -cd 10
+   18  scrot /home/pi/Pictures
+   19  scrot -cd 10
+   20  sudo apt search GLFW
+   21  sudo apt install libglfw3-dev
+   22  sudo apt glew
+   23  sudo apt install ligglew-dev
+   24  sudo apt install libglew-dev
+   25  sudo apt search libpng
+   26  sudo apt install libfreetype-dev
+   27  sudo apt search freeimage
+   28  sudo apt install libfreeimage-dev
+   29  sudo apt search alut
+   30  sudo apt install libalut-dev
+   31  sudo apt search openal
+   32  sudo apt install libopenal-dev
+   33  sudo apt search cglm
+   34  sudo apt install cglm-dev
+   35  sudo apt install libcglm-dev
+   36  sudo apt-get upgrade
+   37  cd libs
+   38  cd dja
+   39  cd liba
+   40  cd libs
+   41  ls
+   42  cd homesim
+   43  ls
+   44  cd libs
+   45  make
+   46  cd ../
+   47  ls
+   48  cd b747
+   49  ./demo
+   50  ./b747
+   51  ./demo
+   52  history>history.txt

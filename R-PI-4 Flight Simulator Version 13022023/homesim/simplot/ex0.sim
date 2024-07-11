@@ -1,0 +1,12 @@
+set altitude 3000 ft
+set IAS 200 kts
+;set rate_of_climb 500 fpm
+set flaps 20
+set gear 1.0
+plot pitch degs -15 15
+plot pitch_rate deg/s -10 10
+plot altitude ft 2000 4000 
+plot TAS kts 160 240
+plot elevator degs -20 20
+time 120 secs
+autotrim
