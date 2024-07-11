@@ -1,0 +1,152 @@
+; Instructor Station Menu 04 Jan 2021
+
+Master,Reposition,Map,Weather,Settings,Failures,Autopilot,Flight Plan,Target,Approach,Data Recording,Flight Data,Camera,Radio
+
+Exit\q               31 <OK to EXIT?>
+Display\o            32 <Map Approach Flightdata Rawdata>
+Mode\o               33 <Run Hold Freeze>
+Print\f              34 <File>
+Model\l              35
+Visual\l             36
+Matlab\o             37 <Off On>
+LoadDTED\l           38
+
+Restore\l            61
+Save\f               62 <File>
+Position\c           63
+Altitude\n           64 <Aircraft Altitude (ft)> 0 50000 3000
+Heading\n            65 <Aircraft Heading> 1 360 360
+Airspeed\n           66 <Aircraft Airspeed> 0 500 150
+
+Centre\c             91
+Compass\c            92
+Find\x               93
+Track\c              94
+Scale\n              95 <Map Scale> 5 5000 250
+Reset\q              96 <OK to reset map?>
+
+Turbulence\n        101 <Turbulence> 0 1 0
+Wind Speed\n        102 <Wind Speed (kt)> 0 80 0
+Wind Dir\n          103 <Wind Direction> 1 360 360
+QNH\n               104 <Area QNH> 995 1035 1013
+Magnetic Var.\n     105 <Magnetic Variation> -20 20 -2
+Cloud Base\n        106 <Cloud Base (ft)> 0 30000 30000
+Visibility\n        107 <Visibility (m)> 0 150000 50000
+OAT\n               108 <OAT> -20 30 15
+Time of Day\n       109 <Time> 0 24 12
+Vis rate\n          110 <Vis rate (m/s)> -10000 10000 0
+
+RMI Card\o          131 <Moving Fixed>
+Morse\o             132 <Off ILS1 VOR1 VOR2 ADF1 ADF2>
+Engines\o           133 <Multiple Single>
+CG Position\n       134 <CG Position (%)> 0 100 25
+Flight Controls\o   135 <Column SideStick>
+HUD\o               136 <Off On>
+Flaps\n             137 <Flaps> 0 30 0
+Gear\o              138 <UP DOWN>
+Park Brake\o        139 <OFF ON>
+
+Flaps\o             161 <OK Failed>
+Gear\o              162 <OK Failed>
+NAV1 Loc\o          163 <OK Failed>
+NAV1 G/S\o          164 <OK Failed>
+NAV2 Loc\o          165 <OK Failed>
+NAV2 G/S\o          166 <OK Failed>
+RMI 1\o             167 <OK Failed>
+RMI 2\o             168 <OK Failed>
+DME\o               169 <OK Failed>
+Engine 1\o          170 <OK Failed>
+Engine 2\o          171 <OK Failed>
+Engine 3\o          172 <OK Failed>
+Engine 4\o          173 <OK Failed>
+ASI\o               174 <OK Failed>
+AI\o                175 <OK Failed>
+VSI\o               176 <OK Failed>
+Altimeter\o         177 <OK Failed>
+Turn\o              178 <OK Failed>
+Compass\o           179 <OK Failed>
+FD\o                180 <OK Failed>
+Engine 1 Fire\q     181 <Engine 1 Fire>
+Engine 2 Fire\q     182 <Engine 2 Fire>
+Engine 3 Fire\q     183 <Engine 3 Fire>
+Engine 4 Fire\q     184 <Engine 4 Fire>
+
+A/P ALT\n           211 <Altitude (ft)> 100 40000 3000
+A/P HDG\n           212 <Heading> 1 360 360
+A/P SPD\n           213 <Speed (kt)> 80 400 150
+A/P VSPD\n          214 <Vertical Speed (fpm)> -1000 1000 0
+Autoland\o          215 <DisEngage Engage>
+A/P ALT Select\o    216 <DisEngage Engage>
+A/P HDG Select\o    217 <DisEngage Engage>
+A/P SPD Select\o    218 <DisEngage Engage>
+A/P VSPD Select\o   219 <DisEngage Engage>
+
+Load Flight Plan\l  241
+Flight Plan\o       242 <Disengage Engage>
+Script\l            243
+
+Target File\l       271
+Target Off\q        272 <Target Off?>
+Position\c          273
+Distance\n          274 <Distance (m)> -32000 32000 100
+Airspeed\n          275 <Airspeed (kt)> 0 800 150
+Heading\n           276 <Heading> 1 360 360
+Turn Rate\n         277 <Turn Rate (deg/sec)> -30 30 0
+Altitude\n          278 <Altitude (ft)> 0 40000 1000
+Climb Rate\n        279 <Climb Rate (ft/min)> -5000 5000 0
+Conflict\q          280 <Conflict?>
+Pushback\x          281
+
+Approach Range\n    301 <Range (nm)> 1 20 10
+Reset\q             302 <OK to reset approach?>
+
+Record\o            331 <Stop Start Continue>
+Save\q              332 <OK to save?>
+Next Page\x         333
+Previous Page\x     334
+Next Mark\x         335
+Previous Mark\x     336
+Mark\x              337
+Goto\n              338 <Secs> 0 300 0
+Time\n              339 <Secs> 2 1000 10
+Kp\n                340 <rad> -100 100 0
+Ki\n                341 <rad> -100 100 0
+Kd\n                342 <rad> -100 100 0
+GNUplot\f           343 <File>
+
+Rudder\d            361 <deg rad> -30 30 10
+Aileron\d           362 <deg rad> -30 30 10
+Elevator\d          363 <deg rad> -20 20 5
+Airspeed\d          364 <kt m/s> 0 200 20
+Altitude\d          365 <ft m> 0 30000 5000
+Beta rate\d         366 <deg/s rad/s> -20 20 10 
+Beta\d              367 <deg rad> -20 20 10
+Alpha rate\d        368 <deg/s rad/s> -20 20 10
+Alpha\d             369 <deg rad> -20 20 10
+Yaw rate\d          370 <deg/s rad/s> -20 20 10
+Roll rate\d         371 <deg/s rad/s> -20 20 10
+Pitch rate\d        372 <deg/s rad/s> -20 20 10
+Yaw\d               373 <deg rad> -180 180 10
+Roll\d              374 <deg rad> -50 50 10
+Pitch\d             375 <deg rad> -20 20 10
+G\d                 376 <G> -5 5 1
+Loc Error\d         377 <deg rad> -5 5 1
+G/S Error\d         378 <deg rad> -2 2 0.5
+Rate of Climb\d     379 <fpm m/s> -1000 1000 100
+Flight Data #1\d    380 <> 14.0 34.0 2.0
+Flight Data #2\d    381 <> 14.0 34.0 2.0
+Flight Data #3\d    382 <> 14.0 34.0 2.0
+
+Record\o            391 <Stop Start Continue>
+Replay\o            392 <Stop Start Continue>
+Position\o          393 <Cockpit Rear Side Wing Tower>
+Time\n              394 <Secs> 20 1000 60
+Load file\l         395
+
+Radio\n             421 <Radio> 1 2 1
+ILS1\n              422 <MHz> 108.00 111.95 108.00
+ILS2\n              423 <MHz> 108.00 111.95 108.00
+VOR1\n              424 <MHz> 108.00 117.95 108.00
+VOR2\n              425 <MHz> 108.00 118.95 108.00
+ADF1\n              426 <KHz> 190.0 535.0 200.0
+ADF2\n              427 <KHz> 190.0 535.0 200.0

@@ -1,0 +1,54 @@
+#
+# Flight Simulator Makefile for B747
+#
+
+# Clear the list of suffixes
+.SUFFIXES:
+# Default compilation Suffix rules for .c .o
+.SUFFIXES: .c .o
+
+#
+# Macros
+#
+
+CC = gcc
+GCC_OPTIONS = -O3 -Wall
+
+ifeq ($(OS),Windows_NT)
+    LIBS = -lwsock32 -lglfw3 -lopengl32 -lglew32 -lgdi32 -lpng -lfreetype -lfreeimage
+else
+    LIBS = -lm -lglfw -lGL -lGLEW -lpng -lfreetype -lfreeimage
+endif
+
+OBJECTS = aero.o aerolink.o ai.o alt.o asi.o compass.o b747.o eicas.o \
+iolib.o fcs.o model.o pfd.o systems.o vsi.o gear.o diagnostics.o fma.o
+
+COMMON_OBJECTS = dted.o clocks.o maths.o glib.o pnglib.o \
+weather.o target.o udplib.o shader.o navlib.o fileio.o
+
+COMMON_OBJECTS_DIR = ../libs
+
+#
+# Targets
+#
+
+### b747 program
+
+b747: $(OBJECTS) $(addprefix $(COMMON_OBJECTS_DIR)/, $(COMMON_OBJECTS))
+	$(CC) -o $@ $(OBJECTS) $(addprefix $(COMMON_OBJECTS_DIR)/, $(COMMON_OBJECTS)) $(LIBS)
+
+
+### SUFFIX rule statement
+
+%.o : %.c
+	$(CC) $(GCC_OPTIONS) -c $<
+
+
+### Clean up
+
+clean:
+ifeq ($(OS),Windows_NT)
+	rm *.o b747.exe
+else
+	rm *.o b747
+endif
