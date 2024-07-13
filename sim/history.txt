@@ -1,0 +1,42 @@
+    1  pacman -Syu
+    2  pacman -Su
+    3  pacman -Ss glfw
+    4  pacman -S mingw-w64-x86_64-glfw 
+    5  pacman -Ss freetype
+    6  pacman -S mingw-w64-x86_64-freetype
+    7  pacman -Ss ftgl
+    8  pacman -S mingw-w64-x86_64-ftgl
+    9  pacman -Ss libpng
+   10  pacman -S mingw-w64-x86_64-libpng
+   11  pacman -Ss libZ
+   12  pacman -S mingw-w64-x86_64-libzip
+   13  pacman -Ss libalut
+   14  pacman -Ss libalu
+   15  pacman -Ss libopenal
+   16  pacman -Ss libopena
+   17  pacman -S mingw-w64-x86_64-freealut
+   18  pacman -S mingw-w64-x86_64-openal
+   19  pacman -S mingw-w64-x86_64-freeglut
+   20  pacman -S mingw-w64-x86_64-glew
+   21  pacman -S mingw-w64-x86_64-opengl
+   22  pacman -Ss opengl
+   23  pacman -S mingw-w64-x86_64-mesa
+   24  pacman -Ss glu
+   25  cd c:
+   26  cd sim/libs/
+   27  make clean
+   28  pacman -Ss make
+   29  pacman -Ss mingw64-make
+   30  pacman -S cmake
+   31  pacman -S gcc
+   32  pacman -S base-devel
+   33  make clean
+   34  make
+   35  gcc -Wall -O2 -c -g   -c -o dted.o dted.c -v
+   36  cd c:
+   37  cd sim/b747x/
+   38  make clean
+   39  make
+   40  make
+   41  history
+   42  history > history.txt

@@ -1,0 +1,899 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <math.h>
+#include <string.h>
+#include <stdbool.h>
+
+#include <SIM/fileio.h>
+#include <SIM/maths.h>
+#include <SIM/navdefn.h>
+#include <SIM/navlib.h>
+
+#define UK_MinLatitude            49.0
+#define UK_MaxLatitude            61.0
+#define UK_MinLongitude           -8.0
+#define UK_MaxLongitude           2.0
+
+#define Australia_MinLatitude     -39.0
+#define Australia_MaxLatitude     -20.0
+#define Australia_MinLongitude    142.0
+#define Australia_MaxLongitude    153.0
+
+#define HashTableSize             500
+
+struct kd_node
+{
+    float          x[2];
+    unsigned int   runway;
+    struct kd_node *left;
+    struct kd_node *right;
+};
+
+unsigned int          NavLib_NumberOfBeacons;
+unsigned int          NavLib_NumberOfRunways;
+unsigned int          NavLib_NumberOfWayPoints;
+unsigned int          NavLib_NextWayPoint;
+
+NavLib_BeaconRecord   NavLib_Beacons[NavLib_MaxBeacons];
+NavLib_RunwayRecord   NavLib_Runways[NavLib_MaxRunways];
+NavLib_WayPointRecord NavLib_WayPoints[NavLib_MaxWayPoints];
+struct kd_node        RunwayNodes[NavLib_MaxRunways];
+struct kd_node        *RunwaysRoot;
+
+unsigned int          LineNumber;
+FILE                  *FileStream;
+unsigned int          HashTable[HashTableSize];
+
+static bool         Digit(int Ch);
+static bool         Alphabetic(int Ch);
+unsigned int        ReadWayPointIdent();
+static float        ReadLatitude();
+static float        ReadLongitude();
+static void         Error(char *fmt, ...);
+char*               BeaconType(unsigned int t);
+static unsigned int NearestILS(float latitude, float longitude, int freq);
+static unsigned int Hash(unsigned int f);
+static void         InitialiseHashTable();
+
+static float        dist(struct kd_node *a, struct kd_node *b);
+static void         swap(struct kd_node *x, struct kd_node *y);
+static struct       kd_node* find_median(struct kd_node *start, struct kd_node *end, int idx);
+static struct       kd_node* make_tree(struct kd_node *t, int len, int fnode);
+static void         nearest(struct kd_node *root, struct kd_node *nd, int i, struct kd_node **best, float *best_dist);
+
+/* --------------------------------------------------- */ 
+unsigned int NavLib_NearestRunway(float Latitude, float Longitude)
+/* N.B Latitude and Longitude must be in degrees */
+{
+    struct kd_node testNode;
+    struct kd_node *found;
+    float  dist;
+
+    testNode.x[0] = Latitude;
+    testNode.x[1] = Longitude;
+    found = NULL;
+
+    nearest(RunwaysRoot, &testNode, 0, &found, &dist);
+
+    return found->runway;
+}
+
+/* --------------------------------------------------- */ 
+static float dist(struct kd_node *a, struct kd_node *b)
+{
+    float d1, d2;
+    
+    d1 = a->x[0] - b->x[0];
+    d2 = a->x[1] - b->x[1];
+    return d1 * d1 + d2 * d2;
+}
+
+/* --------------------------------------------------- */ 
+static void swap(struct kd_node *x, struct kd_node *y) 
+{
+    struct kd_node t;
+    int s = sizeof(t.x) + sizeof(t.runway);  /* copy vector *and* runway number */
+    
+    memcpy(t.x, x->x, s);
+    memcpy(x->x, y->x, s);
+    memcpy(y->x, t.x, s);
+}
+ 
+/* --------------------------------------------------- */ 
+static struct kd_node* find_median(struct kd_node *start, struct kd_node *end, int idx)
+{
+    struct kd_node *p;
+    struct kd_node *store;
+    struct kd_node *md;
+    float  pivot;
+
+    if (end <= start) 
+    {
+        return NULL;
+    }
+    
+    if (end == start + 1)
+    {
+        return start;
+    }
+    
+    md = start + (end - start) / 2;
+
+    while (1) 
+    {
+        pivot = md->x[idx];
+ 
+        swap(md, end - 1);
+        for (store = p = start; p < end; p+=1) 
+        {
+            if (p->x[idx] < pivot) 
+            {
+                if (p != store)
+                {
+                    swap(p, store);
+                }
+                store += 1;
+            }
+        }
+        swap(store, end - 1);
+ 
+        /* median has duplicate values */
+        if (fabs(store->x[idx] - md->x[idx]) <= 0.001)
+        {
+            return md;
+        }
+        
+        if (store > md) 
+        {
+            end = store;
+        }
+        else
+        {
+            start = store;
+        }
+    }
+}
+ 
+/* --------------------------------------------------- */ 
+static struct kd_node* make_tree(struct kd_node *t, int len, int fnode)
+/*
+    t     ptr to the kd tree
+    len   number of items in the kd tree
+    fnode first node in the kd tree
+*/
+{
+    struct kd_node *n;
+ 
+    if (len == 0)
+    {
+        return 0;
+    }
+
+    if ((n = find_median(t, t + len, fnode)))
+    {
+        fnode = (fnode + 1) & 1;  /* alternate 0, 1, 0, 1, 0, 1 ... */
+        n->left  = make_tree(t, n - t, fnode);
+        n->right = make_tree(n + 1, t + len - (n + 1), fnode);
+    }
+    return n;
+}
+ 
+/* --------------------------------------------------- */ 
+static void nearest(struct kd_node *root, struct kd_node *nd, int fnode,
+                    struct kd_node **best, float *best_dist)
+/*  t         ptr to the root of the kd tree
+    nd        ptr to the item
+    fnode     first node to seach from
+    best      ptr to the nearest node
+    best_dist ptr to the distance to the nearest node
+*/
+{
+    float d, dx, dx2;
+ 
+    if (root == NULL) 
+    {
+        return;
+    }
+    
+    d = dist(root, nd);
+    dx = root->x[fnode] - nd->x[fnode];
+    dx2 = dx * dx;
+ 
+    if (*best == NULL || d < *best_dist) 
+    {
+        *best_dist = d;
+        *best = root;
+    }
+ 
+    /* if chance of exact match is high */
+    if (*best_dist <= 0.001) 
+    {
+        return;
+    }
+    
+    fnode = (fnode + 1) & 1;  /* alternate 0, 1, 0, 1, 0, 1 ... */
+  
+    nearest(dx > 0 ? root->left : root->right, nd, fnode, best, best_dist);
+    if (dx2 >= *best_dist) 
+    {
+        return;
+    }
+    nearest(dx > 0 ? root->right : root->left, nd, fnode, best, best_dist);
+}
+
+/* --------------------------------------------------------- */
+static void Error(char *fmt, ...)
+{
+    va_list list;
+    char    *p, *r;
+    int     e;
+    float   f;
+
+    va_start(list, fmt);
+
+    printf("Error at line %d\n", LineNumber);
+
+    for (p = fmt; *p; ++p)
+    {
+        if (*p != '%')
+        {
+            printf("%c", *p);
+        }
+        else
+        {
+            switch (*++p)
+            {
+            case 's':
+            {
+                r = va_arg(list, char *);
+                printf("%s", r);
+                continue;
+            }
+
+            case 'i':
+            {
+                e = va_arg(list, int);
+                printf("%i", e);
+                continue;
+            }
+
+            case 'd':
+            {
+                e = va_arg(list, int);
+                printf("%d", e);
+                continue;
+            }
+
+            case 'f':
+            {
+                f = va_arg(list, double);
+                printf("%f", f);
+                continue;
+            }
+
+            default:
+                printf("%c", *p);
+            }
+        }
+    }
+
+    va_end(list);
+
+    exit(EXIT_FAILURE);
+}
+
+/* --------------------------------------------------------------------- */
+float NavLib_Distance(float Lat1, float Long1, float Lat2, float Long2)
+{
+    float dLat;
+    float dLong;
+
+    dLat  = Lat2 - Lat1;
+    dLong = Long2 - Long1;
+    return EarthRadius * sqrt(dLat * dLat + cos(Lat1) * cos(Lat2) * dLong * dLong);
+}
+
+/* --------------------------------------------------------------------- */
+float NavLib_Bearing(float Lat1, float Long1, float Lat2, float Long2)
+{
+    float x, y;
+    float ax, ay;
+    float dLat;
+    float dLong;
+    float d;
+    float psi;
+
+    dLat  = Lat2 - Lat1;
+    dLong = Long2 - Long1;
+    d     = sqrt(dLat * dLat + cos(Lat1) * cos(Lat2) * dLong * dLong);
+    x     = sin(Lat2) - sin(Lat1) * cos(d);
+    ax    = fabs(x);
+    y     = cos(Lat2) * sin(dLong) * cos(Lat1);
+    ay    = fabs(y);
+    psi   = atan2(ay, ax);
+    if (x < 0.0)
+    {
+        psi = Maths_PI - psi;
+    }
+    if (y < 0.0)
+    {
+        return -psi;
+    }
+    else
+    {
+        return psi;
+    }
+}
+
+/* --------------------------------------------------------------------- */
+unsigned int ReadWayPointIdent(char a[])
+{
+    int      ch;
+    unsigned int i;
+
+    for (i = 0; i <= 3; i += 1)
+    {
+        do
+        {
+            ch = FileIO_Rdch();
+        } while (ch == ' ' || ch == EOL);
+        if (ch == EOF)
+        {
+            return 0;
+        }
+        if (!(Alphabetic(ch) || Digit(ch)))
+        {
+            Error("Bad WayPoint ID (%c)\n", ch);
+        }
+        a[i] = (char) ch;
+    }
+    ch = FileIO_Rdch();
+    return 4;
+}
+
+/* --------------------------------------------------------------------- */
+static bool Alphabetic(int Ch)
+{
+    return Ch >= 'A' && Ch <= 'Z';
+}
+
+/* --------------------------------------------------------------------- */
+static bool Digit(int Ch)
+{
+    return Ch >= '0' && Ch <= '9';
+}
+
+/* --------------------------------------------------------------------- */
+static float ReadLatitude()
+{
+    float f = FileIO_ReadFloat();
+
+    if (f < -90.0 || f > 90.0)
+    {
+        Error("Bad latitude (%f)\n", f);
+    }
+    return f;
+}
+
+/* --------------------------------------------------------------------- */
+static float ReadLongitude()
+{
+    float f = FileIO_ReadFloat();
+
+    if (f < -180.0 || f > 180.0)
+    {
+        Error("Bad longitude (%f)\n", f);
+    }
+    return f;
+}
+
+/* --------------------------------------------------------------------- */
+void NavLib_InitNavLib()
+{
+    unsigned int i;
+//    unsigned int nr;
+    
+    printf("Nav Init\n");
+    NavLib_ReadBeacons(UK_MinLatitude, UK_MaxLatitude, UK_MinLongitude, UK_MaxLongitude); /* must go before ReadRunways */
+    NavLib_ReadRunways(UK_MinLatitude, UK_MaxLatitude, UK_MinLongitude, UK_MaxLongitude);
+    InitialiseHashTable();
+    RunwaysRoot = make_tree(RunwayNodes, NavLib_NumberOfRunways, 0);
+    printf("%d beacons\n%d runways\n", NavLib_NumberOfBeacons, NavLib_NumberOfRunways);
+    //nr = NavLib_NearestRunway(51.1, -0.3);
+    //printf("Nearest Runway=%d %s %f %f\n", nr, NavLib_Runways[nr].Name, 
+    //                                            Maths_Degrees(NavLib_Runways[nr].RunwayLatitude),
+    //                                            Maths_Degrees(NavLib_Runways[nr].RunwayLongitude));
+    //NavLib_ReadBeacons(Australia_MinLatitude, Australia_MaxLatitude, Australia_MinLongitude, Australia_MaxLongitude);
+    //NavLib_ReadRunways(Australia_MinLatitude, Australia_MaxLatitude, Australia_MinLongitude, Australia_MaxLongitude);
+
+/*
+    for (i=1; i<=NavLib_NumberOfBeacons; i+=1)
+    {
+        printf("%d: id=%s lat=%f long=%f freq=%d range=%d alt=%d qdm=%d %s\n", i,
+               NavLib_Beacons[i].Ident,
+               Maths_Degrees(NavLib_Beacons[i].BeaconLatitude),
+               Maths_Degrees(NavLib_Beacons[i].BeaconLongitude),
+               NavLib_Beacons[i].Frequency,
+               NavLib_Beacons[i].Range,
+               NavLib_Beacons[i].Elevation,
+               NavLib_Beacons[i].Qdm,
+               BeaconType(NavLib_Beacons[i].Navaid));
+    }
+*/
+    for (i=1; i<=NavLib_NumberOfRunways; i+=1)
+    {
+        printf("%d %s: lat=%f long=%f elevation=%d len=%d width=%d qdm=%d freq=%d\n", i, NavLib_Runways[i].Name,
+          Maths_Degrees(NavLib_Runways[i].RunwayLatitude), 
+          Maths_Degrees(NavLib_Runways[i].RunwayLongitude), 
+          NavLib_Runways[i].Elevation,
+          NavLib_Runways[i].Length, 
+          NavLib_Runways[i].Width,
+          NavLib_Runways[i].Qdm,
+          NavLib_Runways[i].Frequency);
+    }
+}
+
+/* --------------------------------------------------------------------- */
+char* BeaconType(unsigned int t)
+{
+    switch (t)
+    {
+    case NavLib_DME:
+        return "DME";
+        break;
+    case NavLib_VOR:
+        return "VOR";
+        break;
+    case NavLib_ILS:
+        return "ILS";
+        break;
+    case NavLib_VOR | NavLib_DME:
+        return "VOR/DME";
+        break;
+    case NavLib_ILS | NavLib_DME:
+        return "ILS/DME";
+        break;
+    case NavLib_NDB:
+        return "NDB";
+        break;
+    default:
+        printf("Unrecognised bcn %x\n", t);
+        return "???";
+        break;
+    }
+}
+
+/* --------------------------------------------------------------------- */
+static unsigned int NearestILS(float latitude, float longitude, int freq)
+{
+    unsigned int i;
+    float        dmin = 1000000.0;
+    unsigned int bcn = 0;
+
+    for (i = 1; i <= NavLib_NumberOfBeacons; i += 1)
+    {
+        if (NavLib_Beacons[i].Frequency == freq)
+        {
+            float d = NavLib_Distance(NavLib_Beacons[i].BeaconLatitude, NavLib_Beacons[i].BeaconLongitude,
+                                      latitude, longitude);
+
+            if (d < dmin)
+            {
+                dmin = d;
+                bcn = i;
+            }
+        }
+    }
+    
+    return bcn;
+}
+
+/* --------------------------------------------------------------------- */
+void NavLib_ReadBeacons(float minlat, float maxlat, float minlong, float maxlong)
+{
+    char         ident[50];
+    char         name[200];
+    float        freq;
+    unsigned int range;
+    unsigned int elevation;
+    float        latitude;
+    float        longitude;
+    int          vor_flag;
+    int          dme_flag;
+    char         d1[100];
+    
+    NavLib_NumberOfBeacons = 0;
+    LineNumber             = 1;
+
+    FileStream = FileIO_Open("../files/Navaids.txt");
+    if (FileStream == NULL)
+    {
+        Error("Can't open navaids.txt");
+        exit(1);
+    }
+
+    while (1)
+    {
+        if (FileIO_ReadString(ident, ',') == EOF)
+        {
+            break; /* EOF encountered */
+        }
+        
+		FileIO_ReadString(name, ',');
+        freq      = FileIO_ReadFloat();
+        vor_flag  = FileIO_ReadInt();
+        dme_flag  = FileIO_ReadInt();
+        range     = FileIO_ReadInt();
+		range     = 25;  /* range value unuseable - set to 25 nm instead */
+        latitude  = FileIO_ReadFloat();
+        longitude = FileIO_ReadFloat();
+        elevation =  Maths_Metres(FileIO_ReadInt());
+        FileIO_ReadString(d1, ','); /* country code */
+        FileIO_ReadInt();                  /* skip last number (mag/true?) */
+
+        if (latitude > minlat && latitude < maxlat && longitude > minlong && longitude < maxlong)
+        {
+            unsigned int t;
+            unsigned int i;
+
+            NavLib_NumberOfBeacons += 1;
+            if (NavLib_NumberOfBeacons > NavLib_MaxBeacons)
+            {
+                Error("Too many beacons (%d)\n", NavLib_MaxBeacons);
+            }
+            t = 0;
+            if (freq >= 190.0 && freq <= 1750.0)
+            {
+                if (dme_flag == 0 && vor_flag == 0)
+                {
+                    t = NavLib_NDB;
+                }
+                else
+                {
+                    printf("Navlib: NDB %s with invalid VOR or DME flag\n", ident); 
+                }
+            }
+            else
+            {
+                if (dme_flag == 1)
+                {
+                    t |= NavLib_DME;
+                }
+                t |= NavLib_VOR;  /* default to VOR for now - reset to ILS in ReadRunways */
+            }
+
+            strcpy(NavLib_Beacons[NavLib_NumberOfBeacons].Ident, ident);
+            NavLib_Beacons[NavLib_NumberOfBeacons].BeaconLatitude  = Maths_Rads(latitude);
+            NavLib_Beacons[NavLib_NumberOfBeacons].BeaconLongitude = Maths_Rads(longitude);
+            if ((t & NavLib_NDB) != 0)
+            {
+                NavLib_Beacons[NavLib_NumberOfBeacons].Frequency = (unsigned int) (freq * 10.0 + 0.1);
+            }
+            else
+            {
+                NavLib_Beacons[NavLib_NumberOfBeacons].Frequency = (unsigned int) (freq * 100.0 + 0.1);
+            }
+            NavLib_Beacons[NavLib_NumberOfBeacons].Range     = (t & NavLib_NDB) ? range : 0;
+            NavLib_Beacons[NavLib_NumberOfBeacons].Qdm       = 0;
+            NavLib_Beacons[NavLib_NumberOfBeacons].Elevation = (int) Maths_Metres(elevation);
+            NavLib_Beacons[NavLib_NumberOfBeacons].Navaid    = t;
+
+            for (i = 1; i < NavLib_NumberOfBeacons; i += 1) /* check for duplicate ILS */
+            {
+                if (NavLib_Beacons[i].Frequency == NavLib_Beacons[NavLib_NumberOfBeacons].Frequency)
+                {
+                    float d = NavLib_Distance(NavLib_Beacons[NavLib_NumberOfBeacons].BeaconLatitude, NavLib_Beacons[NavLib_NumberOfBeacons].BeaconLongitude,
+                                              NavLib_Beacons[i].BeaconLatitude, NavLib_Beacons[i].BeaconLongitude);
+
+                    if (d < 10000.0)
+                    {
+                        NavLib_NumberOfBeacons -= 1; /* discard duplicate ILS */
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    FileIO_Close(FileStream);
+}
+
+/* --------------------------------------------------------------------- */
+void NavLib_ReadRunways(float minlat, float maxlat, float minlong, float maxlong)
+{
+    char         rec_id[10];
+    char         ICAO_code[6];
+    char         name[50];
+    float        latitude;
+    float        longitude;
+    
+    NavLib_NumberOfRunways = 0;
+    LineNumber             = 1;
+    
+    FileStream = FileIO_Open("../files/Airports.txt");
+    if (FileStream == NULL)
+    {
+        Error("Can't open Airports.txt\n");
+        exit(1);
+    }
+
+    FileIO_SkipLine();
+    FileIO_SkipLine();
+
+    while (1)
+    {
+        if (FileIO_ReadString(rec_id, ',') == EOF)
+        {
+            break;  /* EOF encountered */
+        }
+		
+        if (rec_id[0] != 'A')
+        {
+            if (rec_id[0] != 0)
+            {
+                FileIO_SkipLine();
+            }
+            continue;
+        }
+
+        FileIO_ReadString(ICAO_code, ',');
+        FileIO_ReadString(name, ',');
+        
+		if (strlen(name) >= NavLib_NameSize)
+        {
+            name[NavLib_NameSize - 1] = '\0';
+        }
+		
+        latitude  = FileIO_ReadFloat();
+        longitude = FileIO_ReadFloat();
+        FileIO_ReadInt();  /* skip airfield elevation */
+        FileIO_ReadInt();  /* skip transition altitude */
+        FileIO_ReadInt();  /* skip unknown */
+        FileIO_ReadInt();  /* skip longest runway */
+        FileIO_ReadInt();  /* skip mag var M or T */
+
+        if (latitude > minlat && latitude < maxlat && longitude > minlong && longitude < maxlong)
+        {
+            int          longest_ILS = 0;
+            int          longest_nonILS = 0;
+            unsigned int ILS = 0;
+            
+			NavLib_NumberOfRunways += 1;
+            if (NavLib_NumberOfRunways > NavLib_MaxRunways)
+            {
+                Error("Too many runways (%d)\n", NavLib_NumberOfRunways);
+            }
+
+            while (1)
+            {
+                char         run_rec_id [10];
+                char         runway_id [10];
+                int          rqdm;
+                int          rlen;
+                int          rwidth;
+                int          ilsmode;
+                unsigned int ifreq;
+                int          iqdm;
+                float        rlat;
+                float        rlong;
+                int          elevation;
+                
+                if (FileIO_ReadString(run_rec_id, ',') == EOF)
+                {
+                    break; /* EOF encountered */
+                }
+				
+                if (run_rec_id[0] == 'R')
+                {
+                    FileIO_ReadString(runway_id, ',');
+                    rqdm      = FileIO_ReadInt();
+                    rlen      = (int) Maths_Metres(FileIO_ReadInt());
+                    rwidth    = (int) Maths_Metres(FileIO_ReadInt());
+                    ilsmode   = FileIO_ReadInt();
+                    ifreq     = (unsigned int) (FileIO_ReadFloat() * 100.0 + 0.1);
+                    iqdm      = FileIO_ReadInt();
+                    rlat      = FileIO_ReadFloat();  /* degrees */
+                    rlong     = FileIO_ReadFloat();  /* degrees */
+                    elevation = (int) Maths_Metres(FileIO_ReadInt());
+                    FileIO_ReadFloat(); /* skip g/s angle */
+                    FileIO_ReadInt();   /* skip threshold overfly ht */
+                    FileIO_ReadInt();   /* skip surface type */
+                    FileIO_ReadInt();   /* skip runway status */
+                    
+                    if (ilsmode)
+					{
+						ILS = NearestILS(Maths_Rads(rlat), Maths_Rads(rlong), ifreq);
+						if (ILS > 0)
+						{
+						    if (NavLib_Beacons[ILS].Frequency != ifreq)
+							{
+							    continue;   /* ignore ILS with "wrong" frequency */
+							}
+						}
+						else
+						{
+						    continue;  /* ignore if ILS not found */
+						}
+					    if (rlen > longest_ILS)
+						{
+					        longest_ILS = rlen;
+						}
+					    else
+                        {
+                            continue; /* ignore shorter ILS */
+                        }
+					}
+                    else
+                    { 
+                        if (longest_ILS == 0 && rlen > longest_nonILS)
+						{
+						    longest_nonILS = rlen;
+						}
+						else
+                        {
+                            continue;  /* ignore longer non-ILS if ILS already found */
+                        }
+                    }
+
+					NavLib_Runways[NavLib_NumberOfRunways].Elevation       = elevation;
+					NavLib_Runways[NavLib_NumberOfRunways].Width           = rwidth;
+					NavLib_Runways[NavLib_NumberOfRunways].RunwayLatitude  = Maths_Rads(rlat);
+					NavLib_Runways[NavLib_NumberOfRunways].RunwayLongitude = Maths_Rads(rlong);
+					NavLib_Runways[NavLib_NumberOfRunways].Length          = rlen;
+					NavLib_Runways[NavLib_NumberOfRunways].Qdm             = ilsmode ? iqdm : rqdm;
+					NavLib_Runways[NavLib_NumberOfRunways].Frequency       = ilsmode ? ifreq : 0;
+					strcpy(NavLib_Runways[NavLib_NumberOfRunways].Name, name);
+					RunwayNodes[NavLib_NumberOfRunways - 1].x[0] = rlat;
+					RunwayNodes[NavLib_NumberOfRunways - 1].x[1] = rlong;
+					RunwayNodes[NavLib_NumberOfRunways - 1].runway = NavLib_NumberOfRunways;
+                    
+					if (ILS > 0)
+					{
+						NavLib_Beacons[ILS].BeaconLatitude  = NavLib_Runways[NavLib_NumberOfRunways].RunwayLatitude;
+						NavLib_Beacons[ILS].BeaconLongitude = NavLib_Runways[NavLib_NumberOfRunways].RunwayLongitude;
+						NavLib_Beacons[ILS].Navaid &= (~NavLib_VOR);  /* change beacon from VOR to ILS */
+						NavLib_Beacons[ILS].Navaid |= NavLib_ILS;
+						NavLib_Beacons[ILS].Qdm = NavLib_Runways[NavLib_NumberOfRunways].Qdm;
+						NavLib_Beacons[ILS].Elevation = NavLib_Runways[NavLib_NumberOfRunways].Elevation;
+						//printf("ILS modified: %s %f %f\n", NavLib_Beacons[ILS].Ident, rlat, rlong);
+					}
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+    
+    FileIO_Close(FileStream);
+}
+
+/* --------------------------------------------------------------------- */
+void NavLib_ReadFlightPlan(char Filename[])
+{
+    unsigned int i;
+    char         str[100];
+
+    // printf("NavLib_ReadFlightPlan %s\n", Filename);
+    NavLib_NumberOfWayPoints = 0;
+    NavLib_NextWayPoint      = 0;
+    LineNumber               = 1;
+
+    FileStream = FileIO_Open(Filename);
+    if (FileStream == NULL)
+    {
+        Error("Can't open flight plan file: %s", Filename);
+        return;
+    }
+
+    while (1)
+    {
+        LineNumber               = LineNumber + 1;
+        NavLib_NumberOfWayPoints = NavLib_NumberOfWayPoints + 1;
+        if (NavLib_NumberOfWayPoints > NavLib_MaxWayPoints)
+        {
+            Error("Too many waypoints (%d)\n", NavLib_MaxWayPoints);
+        }
+        if (FileIO_ReadString(str, ' ') == EOF)
+        {
+            break;
+        }
+
+        for (i = 0; i <= 3; i += 1)
+        {
+            NavLib_WayPoints[NavLib_NumberOfWayPoints].WayPointID[i] = str[i];
+        }
+        NavLib_WayPoints[NavLib_NumberOfWayPoints].WayPointLatitude  = ReadLatitude();
+        NavLib_WayPoints[NavLib_NumberOfWayPoints].WayPointLongitude = ReadLongitude();
+        NavLib_WayPoints[NavLib_NumberOfWayPoints].WayPointAltitude  = FileIO_ReadInt();
+        NavLib_WayPoints[NavLib_NumberOfWayPoints].WayPointSpeed     = FileIO_ReadInt();
+    }
+    FileIO_Close(FileStream);
+}
+
+/* ------------------------------------------------------ */
+static unsigned int Hash(unsigned int f)
+{
+    unsigned int p;
+
+    p = (f * 137 + 92731) % HashTableSize;
+    return p;
+}
+
+/* ------------------------------------------------------ */
+static void InitialiseHashTable()
+{
+    unsigned int i, f, p;
+
+    for (i = 0; i <= HashTableSize - 1; i += 1) 
+    {
+        HashTable[i] = 0;
+    }
+ 
+    for (i = 1; i <= NavLib_NumberOfBeacons; i += 1) 
+    {
+        f = NavLib_Beacons[i].Frequency;
+        p = Hash(f);
+        while (HashTable[p] != 0) 
+        {
+            p = p + 1;
+            if (p >= HashTableSize) 
+            {
+                p = 0;
+            }
+        }
+        HashTable[p] = i;
+    }
+}
+
+/* ------------------------------------------------------ */
+unsigned int NavLib_LookupChannel(float Latitude, float Longitude, unsigned int f,
+                                  NavLib_BeaconType BType)
+{
+    unsigned int p;
+    float d;
+    float Maxd;
+    unsigned int Result;
+    unsigned int b;
+    unsigned int i;
+
+    p = Hash(f);
+    Maxd = 160000.0;
+    Result = 0;
+    
+    for (i = 1; i <= HashTableSize; i += 1) 
+    {
+        b = HashTable[p];
+        if (b == 0) 
+        {
+            return Result;
+        }
+
+        if ((NavLib_Beacons[b].Frequency == f) && (BType & NavLib_Beacons[b].Navaid)) 
+        {
+            d = NavLib_Distance(Latitude, Longitude,
+                                NavLib_Beacons[b].BeaconLatitude, 
+                                NavLib_Beacons[b].BeaconLongitude);
+            if (d < Maxd) 
+            {
+                Maxd = d;
+                Result = b;
+            }
+        }
+
+        p = p + 1;
+        if (p >= HashTableSize) 
+        {
+            p = 0;
+        }
+    }
+    return Result;
+}
+
+/* --------------------------------------------------------------------- */
+void BEGIN_NavLib(void)
+{
+    NavLib_InitNavLib();
+}

@@ -1,1 +1,0 @@
-udplib.o: udplib.c

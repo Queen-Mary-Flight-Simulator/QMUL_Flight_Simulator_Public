@@ -1,0 +1,39 @@
+; Off-line flight data Menu 31 Jan 2016
+
+Master,Data Recording,Flight Data
+
+Exit\q               31 <OK to EXIT?>
+Print\f              32 <File>
+Load File\l          305
+GNU Plot\f           254 <File>
+
+Next Page\x         243
+Previous Page\x     244
+Next Mark\x         245
+Previous Mark\x     246
+Mark\x              247
+Goto\n              248 <Secs> 0 300 0
+Time\n              249 <Secs> 2 1000 10
+
+Rudder\d            271 <deg rad> -30 30 10
+Aileron\d           272 <deg rad> -30 30 10
+Elevator\d          273 <deg rad> -20 20 5
+Airspeed\d          274 <kt m/s> 0 200 20
+Altitude\d          275 <ft m> 0 30000 5000
+Beta rate\d         276 <deg/s rad/s> -20 20 10 
+Beta\d              277 <deg rad> -20 20 10
+Alpha rate\d        278 <deg/s rad/s> -20 20 10
+Alpha\d             279 <deg rad> -20 20 10
+Yaw rate\d          280 <deg/s rad/s> -20 20 10
+Roll rate\d         281 <deg/s rad/s> -20 20 10
+Pitch rate\d        282 <deg/s rad/s> -20 20 10
+Yaw\d               283 <deg rad> -180 180 10
+Roll\d              284 <deg rad> -50 50 10
+Pitch\d             285 <deg rad> -20 20 10
+G\d                 286 <G> -5 5 1
+Loc Error\d         287 <deg rad> -5 5 1
+G/S Error\d         288 <deg rad> -2 2 0.5
+Rate of Climb\d     289 <fpm m/s> -1000 1000 100
+Flight Data #1\d    290 <> 14.0 34.0 2.0
+Flight Data #2\d    291 <> 14.0 34.0 2.0
+Flight Data #3\d    292 <> 14.0 34.0 2.0
