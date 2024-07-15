@@ -15,9 +15,7 @@ Folders
 The PC version folder entails a group of files from different systems of the flight simulator including: the engine model, instructor station, navigation flight display, primary flight display etc.
 The eng folder contains files required for the engine model, computing the thrust, fuel flow and other parameters for the aircraft engine.
 The ios folder contains the instructor operating station files.
-The lib folder includes…
 The nfd folder contains the files for the navigation and avionics computer, producing navigation display for the flight simulator.
-The rpi1 folder contains…
 The pfd folder contains the aircraft primary flight display files.
 The visual folder includes…
 The MATLAB files folder includes code used to obtain an integrated interface to Mathworks MATLAB software. 
