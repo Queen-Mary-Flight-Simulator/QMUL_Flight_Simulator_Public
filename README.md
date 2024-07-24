@@ -21,7 +21,7 @@ The MATLAB files folder includes code used to obtain an integrated interface to 
 The interface enables students to design and develop prototype aircraft flight control code, where the output of the code is transmitted to the flight simulator to override flight control inputs. 
 This external interface between the flight simulator and MATLAB allows rapid prototyping of flight control code in the MATLAB environment without the need to access, develop or recompile the flight simulator software. 
 
-Instructions on Instalation from Author: 
+Instructions on Installation from Author: 
 
 This works with msys2, so you will need to download msys2. You can try to build it with mingw but I have not done this and cannot guarantee it will work (although it may).
 You will also need to download the libraries using pacman:
