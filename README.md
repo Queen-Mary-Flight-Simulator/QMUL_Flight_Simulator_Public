@@ -17,7 +17,6 @@ The eng folder contains files required for the engine model, computing the thrus
 The ios folder contains the instructor operating station files.
 The nfd folder contains the files for the navigation and avionics computer, producing navigation display for the flight simulator.
 The pfd folder contains the aircraft primary flight display files.
-The visual folder includes…
 The MATLAB files folder includes code used to obtain an integrated interface to Mathworks MATLAB software. 
 The interface enables students to design and develop prototype aircraft flight control code, where the output of the code is transmitted to the flight simulator to override flight control inputs. 
 This external interface between the flight simulator and MATLAB allows rapid prototyping of flight control code in the MATLAB environment without the need to access, develop or recompile the flight simulator software. 
