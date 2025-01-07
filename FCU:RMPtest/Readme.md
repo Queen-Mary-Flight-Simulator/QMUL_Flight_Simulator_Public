@@ -1,10 +1,33 @@
-Off-line testing of the FCU and RMP modules:
-fcutest.c, fcu.c, fcu.h
-rpmtest.c, radio.c, radio.h
-Note that this software uses ncurses which works with Linux (Raspberry Pi) but needs pcurses to work with msys2. 
+# Off-line Testing of the FCU and RMP Modules
 
-It is also important to bear in mind:
-Both modules use an RS-232C serial interface (FCU at 9600 baud and RMP at 115200 baud), which is independent of the UDP transfers, conforming to the serial interface defined by Elan Informatique in the following manuals:
-AIRBUS A320 FCU/EFIS Panel Technical User Manual, Ref. 8056E
-AIRBUS A320 Radio Management Panel Technical User Manual, Ref. 8163C, which uses a 32-bit checksum with the transfers.
-Both modules (fcu.c and rmp.c) use Posix threads in order to avoid any delay with serial data transfers, which would not apply to UDP transfers.
+## Source Files
+- **FCU Module:**
+  - `fcutest.c`
+  - `fcu.c`
+  - `fcu.h`
+- **RMP Module:**
+  - `rpmtest.c`
+  - `radio.c`
+  - `radio.h`
+
+### Compatibility Note
+This software uses `ncurses`, which works on Linux systems (e.g., Raspberry Pi). For `msys2` environments, `pcurses` is required instead.
+
+---
+
+## Key Considerations
+
+1. **Serial Interface:**
+   - Both modules utilise an RS-232C serial interface:
+     - FCU operates at **9600 baud**.
+     - RMP operates at **115200 baud**.
+   - These interfaces are independent of UDP transfers and conform to the specifications defined by Elan Informatique in the following technical manuals:
+     - **AIRBUS A320 FCU/EFIS Panel Technical User Manual** (Ref. 8056E).
+     - **AIRBUS A320 Radio Management Panel Technical User Manual** (Ref. 8163C).
+   - The RMP module uses a **32-bit checksum** for data transfers.
+
+2. **Multithreading:**
+   - Both `fcu.c` and `rmp.c` use **Posix threads** to minimise delays in serial data transfers. 
+   - This multithreading approach is not applicable to UDP transfers.
+
+---
